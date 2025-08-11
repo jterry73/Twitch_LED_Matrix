@@ -6,17 +6,21 @@ import asyncio
 import os
 import sys
 import json
+import socket
+from dotenv import load_dotenv
 from queue import Queue
-import cherrypy
 from twitchAPI.twitch import Twitch
 from twitchAPI.oauth import UserAuthenticator, refresh_access_token
 from twitchAPI.eventsub.websocket import EventSubWebsocket
 from twitchAPI.type import AuthScope, TwitchAPIException
 from rgbmatrix import RGBMatrix, RGBMatrixOptions, graphics
 
+load_dotenv()
+
 # -------------------------------------------------------------------------
 # Configuration
 # -------------------------------------------------------------------------
+SOCKET_FILE = "/tmp/twitch_matrix.sock"
 
 # LED Matrix Configuration
 options = RGBMatrixOptions()
@@ -26,7 +30,6 @@ options.chain_length = 1
 options.parallel = 1
 options.hardware_mapping = 'regular'
 options.gpio_slowdown = 2
-options.disable_hardware_pulsing = True
 
 # Font file configuration
 FONT_TITLE = "fonts/MinercraftoryRegular-18.bdf"
@@ -37,9 +40,14 @@ TWITCH_CLIENT_ID = os.environ.get("TWITCH_CLIENT_ID")
 TWITCH_CLIENT_SECRET = os.environ.get("TWITCH_CLIENT_SECRET")
 TWITCH_USERNAME = os.environ.get("TWITCH_USERNAME")
 TOKEN_FILE = f"/etc/twitch_matrix/{TWITCH_USERNAME}_tokens.json" # Using a standard location for app data
-PORT = 8080 # The LOCAL port CherryPy will run on
 
 matrix = RGBMatrix(options=options)
+
+# Animation Configuration
+FIREWORK_DURATION = 5
+HEART_DURATION = 6
+SMILEY_DURATION = 6
+HEART_COLOR = graphics.Color(255, 20, 147) # Deep Pink
 
 # Firework Simulation Configuration
 GRAVITY = 0.1
@@ -50,7 +58,6 @@ TRAIL_LIFESPAN = 25
 ROCKET_SIZE = 2
 PARTICLE_SIZE = 2
 TRAIL_SIZE = 1
-FIREWORK_DURATION = 5
 
 # Font Colors
 SUBS_COLOR = graphics.Color(255, 255, 0)
@@ -62,18 +69,16 @@ SCROLL_NUM_COLOR = graphics.Color(255, 105, 180)
 subscriber_count = 0
 subscriber_lock = threading.Lock()
 animation_queue = Queue()
-animation_lock = threading.Lock() # Safeguard for all animations
 # --- Events for controlling the main logic threads ---
 twitch_logic_active = threading.Event()
-shutdown_event = threading.Event()
+twitch_shutdown_event = threading.Event()
+daemon_shutdown_event = threading.Event()
 twitch_thread = None
 
 # -------------------------------------------------------------------------
-# Classes
+# Animation and Display Classes
 # -------------------------------------------------------------------------
-
 class FireworkShow:
-    """Manages the firework simulation."""
     def __init__(self, matrix):
         self.matrix = matrix
         self.rockets = []
@@ -104,7 +109,7 @@ class FireworkShow:
     def run(self, duration_seconds=10):
         start_time = time.time()
         print("Starting firework celebration!")
-        while time.time() - start_time < duration_seconds and not shutdown_event.is_set():
+        while time.time() - start_time < duration_seconds and not daemon_shutdown_event.is_set():
             self.canvas.Clear()
             if len(self.rockets) < MAX_ROCKETS and random.random() < 0.2:
                 self.rockets.append(self.Rocket(random.randint(0, self.matrix.width - 1), self.matrix.height - 1, graphics.Color(255, 255, 255)))
@@ -134,6 +139,89 @@ class FireworkShow:
             time.sleep(0.04)
         print("Firework celebration finished.")
 
+class PulsatingHeart:
+    """Manages the pulsating heart animation."""
+    def __init__(self, matrix):
+        self.matrix = matrix
+        self.canvas = self.matrix.CreateFrameCanvas()
+
+    def run(self, duration_seconds=10):
+        start_time = time.time()
+        print("Starting heart animation!")
+        
+        while time.time() - start_time < duration_seconds and not daemon_shutdown_event.is_set():
+            self.canvas.Clear()
+            
+            pulse = (math.sin(time.time() * 5) + 1) / 2
+            
+            center_x = self.matrix.width / 2
+            center_y = self.matrix.height / 2
+            min_scale = 1.2
+            max_scale = 1.6
+            
+            scale = min_scale + (max_scale - min_scale) * pulse
+            
+            for s in range(100, 0, -5):
+                inner_scale = scale * (s / 100.0)
+                step = 5 if s < 80 else 1 
+                for i in range(0, 360, step):
+                    t = math.radians(i)
+                    x = inner_scale * (16 * math.pow(math.sin(t), 3))
+                    y = -inner_scale * (13 * math.cos(t) - 5 * math.cos(2*t) - 2 * math.cos(3*t) - math.cos(4*t))
+                    self.canvas.SetPixel(int(center_x + x), int(center_y + y - 5), HEART_COLOR.red, HEART_COLOR.green, HEART_COLOR.blue)
+
+            self.canvas = self.matrix.SwapOnVSync(self.canvas)
+            time.sleep(0.04)
+        print("Heart animation finished.")
+
+class SmileyFace:
+    """Manages the smiley face animation."""
+    def __init__(self, matrix):
+        self.matrix = matrix
+        self.canvas = self.matrix.CreateFrameCanvas()
+
+    def run(self, duration_seconds=10):
+        start_time = time.time()
+        print("Starting smiley face animation!")
+        yellow = graphics.Color(255, 255, 0)
+        black = graphics.Color(0, 0, 0)
+
+        center_x = self.matrix.width / 2
+        center_y = self.matrix.height / 2
+        radius = 24
+
+        while time.time() - start_time < duration_seconds and not daemon_shutdown_event.is_set():
+            self.canvas.Clear()
+            
+            # Draw filled yellow circle for the face
+            for r in range(radius, 0, -1):
+                graphics.DrawCircle(self.canvas, int(center_x), int(center_y), r, yellow)
+
+            # Eyes (ovals)
+            eye_offset_x = 10
+            eye_offset_y = 8
+            eye_radius_h = 4
+            eye_radius_v = 6
+            for r_v in range(eye_radius_v, 0, -1):
+                for r_h in range(eye_radius_h, 0, -1):
+                    graphics.DrawCircle(self.canvas, int(center_x - eye_offset_x), int(center_y - eye_offset_y), r_h, black)
+                    graphics.DrawCircle(self.canvas, int(center_x + eye_offset_x), int(center_y - eye_offset_y), r_h, black)
+
+
+            # Smile (arc)
+            smile_radius = 15
+            smile_center_y = center_y + 5
+            for i in range(-12, 13):
+                # Simple circle equation to create an arc
+                y_offset = math.sqrt(max(0, smile_radius**2 - i**2))
+                graphics.DrawLine(self.canvas, int(center_x + i), int(smile_center_y + y_offset - 5), int(center_x + i), int(smile_center_y + y_offset - 3), black)
+
+
+            self.canvas = self.matrix.SwapOnVSync(self.canvas)
+            time.sleep(0.1)
+        print("Smiley face animation finished.")
+
+
 class StaticTextDisplay:
     def __init__(self, matrix):
         self.matrix = matrix
@@ -158,7 +246,7 @@ class ScrollingText:
         total_width = sum(sum(self.font.CharacterWidth(ord(c)) for c in text) for text, color in self.text_parts)
         pos = self.canvas.width
         print("Scrolling text...")
-        while pos + total_width > 0 and not shutdown_event.is_set():
+        while pos + total_width > 0 and not daemon_shutdown_event.is_set():
             self.canvas.Clear()
             current_x, y = pos, int((self.matrix.height * 0.5) + (self.font.height / 3))
             for text, color in self.text_parts: current_x += graphics.DrawText(self.canvas, self.font, current_x, y, color, text)
@@ -171,7 +259,6 @@ class ScrollingText:
 # -------------------------------------------------------------------------
 
 async def on_subscribe(data: dict):
-    """Callback for when a subscription event is received."""
     global subscriber_count
     user_name = data.event.user_name
     print(f"New subscriber: {user_name}")
@@ -183,7 +270,6 @@ async def on_subscribe(data: dict):
     animation_queue.put(('scroll', scroll_text))
 
 async def on_sub_gift(data: dict):
-    """Callback for when a subscription gift event is received."""
     global subscriber_count
     user_name = data.event.user_name
     gift_count = data.event.total
@@ -200,7 +286,6 @@ async def on_sub_gift(data: dict):
     animation_queue.put(('scroll', scroll_text))
 
 async def on_follow(data: dict):
-    """Callback for when a follow event is received."""
     user_name = data.event.user_name
     print(f"New follower: {user_name}")
     scroll_text = [ (f"{user_name} just followed!", SCROLL_COLOR) ]
@@ -208,40 +293,30 @@ async def on_follow(data: dict):
     animation_queue.put(('scroll', scroll_text))
     
 def token_update_callback(token: str, refresh_token: str):
-    """Callback for when the user token is refreshed."""
     print("User token refreshed, saving to file...")
     with open(TOKEN_FILE, 'w') as f:
         json.dump({'token': token, 'refresh_token': refresh_token}, f)
 
 async def twitch_events_task():
-    """The asynchronous task that connects to Twitch and listens for events."""
     twitch = await Twitch(TWITCH_CLIENT_ID, TWITCH_CLIENT_SECRET)
     twitch.user_auth_refresh_callback = token_update_callback
 
     target_scope = [AuthScope.CHANNEL_READ_SUBSCRIPTIONS, AuthScope.MODERATOR_READ_FOLLOWERS]
     
-    if os.path.exists(TOKEN_FILE):
-        print("Found token file, attempting to refresh...")
-        with open(TOKEN_FILE, 'r') as f:
-            tokens = json.load(f)
-        try:
-            token, refresh_token = await refresh_access_token(tokens['refresh_token'], TWITCH_CLIENT_ID, TWITCH_CLIENT_SECRET)
-            await twitch.set_user_authentication(token, target_scope, refresh_token)
-            print("Successfully refreshed and set user token.")
-        except TwitchAPIException:
-            print("Failed to refresh token, starting manual auth flow.")
-            os.remove(TOKEN_FILE)
-            await twitch_events_task()
-            return
-    else:
-        auth = UserAuthenticator(twitch, target_scope, force_verify=False)
-        print("Please open the following URL in a browser to authorize the application:")
-        url = auth.return_auth_url()
-        print(url)
-        code = input("Please paste the code from the redirected URL here: ")
-        token, refresh_token = await auth.authenticate(user_token=code)
+    if not os.path.exists(TOKEN_FILE):
+        print("Token file not found. Please authenticate via the control panel first.")
+        return
+
+    print("Found token file, attempting to refresh...")
+    with open(TOKEN_FILE, 'r') as f:
+        tokens = json.load(f)
+    try:
+        token, refresh_token = await refresh_access_token(tokens['refresh_token'], TWITCH_CLIENT_ID, TWITCH_CLIENT_SECRET)
         await twitch.set_user_authentication(token, target_scope, refresh_token)
-        token_update_callback(token, refresh_token)
+        print("Successfully refreshed and set user token.")
+    except TwitchAPIException:
+        print("Failed to refresh token. Please re-authenticate via the control panel.")
+        return
     
     user_info_gen = twitch.get_users(logins=[TWITCH_USERNAME])
     user_info = [u async for u in user_info_gen]
@@ -260,98 +335,127 @@ async def twitch_events_task():
     print("Successfully subscribed to all events.")
 
     try:
-        await shutdown_event.wait()
+        while not twitch_shutdown_event.is_set():
+            await asyncio.sleep(0.1)
     finally:
         print("Stopping EventSub and closing Twitch connection.")
         await eventsub.stop()
         await twitch.close()
 
-def main_application_loop():
-    """Main synchronous function to handle animations and display."""
-    global twitch_thread
-    
-    twitch_async_thread = threading.Thread(target=lambda: asyncio.run(twitch_events_task()), daemon=True)
-    twitch_async_thread.start()
-
+def display_and_animation_loop():
+    """Main synchronous loop to handle animations and display."""
     static_display = StaticTextDisplay(matrix)
     
     try:
-        print("Starting main loop. Press CTRL-C to stop.")
-        while not shutdown_event.is_set():
-            if animation_lock.acquire(blocking=False):
-                try:
-                    if not animation_queue.empty():
-                        task_type, data = animation_queue.get_nowait()
-                        if task_type == 'fireworks':
-                            fireworks = FireworkShow(matrix)
-                            fireworks.run(duration_seconds=data)
-                        elif task_type == 'scroll':
-                            scroll_font = graphics.Font(); scroll_font.LoadFont(FONT_SUBS_NUMBER)
-                            scroller = ScrollingText(matrix, data, scroll_font)
-                            scroller.run()
-                    else:
-                        with subscriber_lock:
-                            static_display.update(subscriber_count)
-                finally:
-                    animation_lock.release()
-            
-            time.sleep(0.1)
+        print("Starting display and animation loop.")
+        while not daemon_shutdown_event.is_set():
+            try:
+                task_type, data = animation_queue.get(timeout=0.1)
+                
+                if task_type == 'fireworks':
+                    fireworks = FireworkShow(matrix)
+                    fireworks.run(duration_seconds=data)
+                elif task_type == 'scroll':
+                    scroll_font = graphics.Font(); scroll_font.LoadFont(FONT_SUBS_NUMBER)
+                    scroller = ScrollingText(matrix, data, scroll_font)
+                    scroller.run()
+                elif task_type == 'heart':
+                    heart = PulsatingHeart(matrix)
+                    heart.run(duration_seconds=data)
+                elif task_type == 'smiley':
+                    smiley = SmileyFace(matrix)
+                    smiley.run(duration_seconds=data)
+
+            except Exception: # queue.Empty
+                if twitch_logic_active.is_set():
+                    with subscriber_lock:
+                        static_display.update(subscriber_count)
+                else:
+                    matrix.Clear()
+                    time.sleep(0.1)
 
     except KeyboardInterrupt:
-        print("\nExiting main application.")
+        daemon_shutdown_event.set()
     finally:
+        print("\nExiting display and animation loop.")
         matrix.Clear()
-        twitch_logic_active.clear()
-        twitch_thread = None
 
 # -------------------------------------------------------------------------
-# CherryPy Web Server for Triggers
+# Socket Server for Commands
 # -------------------------------------------------------------------------
 
-class WebServer:
-    @cherrypy.expose
-    def start(self):
-        global twitch_thread
+def handle_command(command):
+    global twitch_thread
+    cmd = command.get('command')
+    
+    if cmd == 'start':
         if twitch_logic_active.is_set():
-            return "Twitch logic is already running."
-        
+            print("Received start command, but logic is already running.")
+            return
+        print("Received start command.")
         twitch_logic_active.set()
-        shutdown_event.clear()
-        twitch_thread = threading.Thread(target=main_application_loop, daemon=True)
+        twitch_shutdown_event.clear()
+        twitch_thread = threading.Thread(target=lambda: asyncio.run(twitch_events_task()), daemon=True)
         twitch_thread.start()
-        return "Twitch logic started."
 
-    @cherrypy.expose
-    def stop(self):
+    elif cmd == 'stop':
         if not twitch_logic_active.is_set():
-            return "Twitch logic is not running."
-            
-        shutdown_event.set()
-        return "Shutdown signal sent."
+            print("Received stop command, but logic is not running.")
+            return
+        print("Received stop command.")
+        twitch_shutdown_event.set()
+        twitch_logic_active.clear()
 
-    @cherrypy.expose
-    def fireworks(self):
-        if not animation_lock.acquire(blocking=False):
-            return "An animation is already in progress."
+    elif cmd == 'fireworks':
+        print("Received fireworks command, adding to queue.")
+        animation_queue.put(('fireworks', FIREWORK_DURATION))
         
-        def firework_thread_target():
-            try:
-                fireworks = FireworkShow(matrix)
-                fireworks.run(duration_seconds=FIREWORK_DURATION)
-            finally:
-                animation_lock.release()
+    elif cmd == 'heart':
+        print("Received heart command, adding to queue.")
+        animation_queue.put(('heart', HEART_DURATION))
         
-        fireworks_thread = threading.Thread(target=firework_thread_target, daemon=True)
-        fireworks_thread.start()
-        return "Fireworks triggered."
+    elif cmd == 'smiley':
+        print("Received smiley command, adding to queue.")
+        animation_queue.put(('smiley', SMILEY_DURATION))
+
+def socket_server_thread():
+    try:
+        os.unlink(SOCKET_FILE)
+    except OSError:
+        if os.path.exists(SOCKET_FILE):
+            raise
+
+    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    sock.bind(SOCKET_FILE)
+    os.chmod(SOCKET_FILE, 0o777)
+    sock.listen(1)
+    print(f"Socket server listening on {SOCKET_FILE}")
+
+    while not daemon_shutdown_event.is_set():
+        connection, client_address = sock.accept()
+        try:
+            data = connection.recv(1024)
+            if data:
+                command = json.loads(data.decode('utf-8'))
+                handle_command(command)
+        except Exception as e:
+            print(f"Error handling command: {e}")
+        finally:
+            connection.close()
 
 if __name__ == '__main__':
-    cherrypy.config.update({
-        'server.socket_host': '0.0.0.0',
-        'server.socket_port': PORT
-    })
+    # This daemon must be run with sudo
+    socket_thread = threading.Thread(target=socket_server_thread, daemon=True)
+    socket_thread.start()
     
-    print(f"CherryPy server starting on http://0.0.0.0:{PORT}")
-    print("Send a GET request to /start to begin Twitch integration.")
+    display_thread = threading.Thread(target=display_and_animation_loop, daemon=True)
+    display_thread.start()
     
-    cherrypy.quickstart(WebServer(), '/')
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print("\nShutting down daemon.")
+        daemon_shutdown_event.set()
+        twitch_shutdown_event.set()
+        matrix.Clear()
