@@ -14,25 +14,28 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # --- Clone and build the rpi-rgb-led-matrix library FIRST ---
-# This is a dependency that changes infrequently, so we install it early.
 RUN git clone https://github.com/hzeller/rpi-rgb-led-matrix.git /rpi-rgb-led-matrix
 WORKDIR /rpi-rgb-led-matrix
-# Reverted to the default make install instructions
 RUN make build-python PYTHON=$(which python)
 RUN make install-python PYTHON=$(which python)
 
 # --- Clone your public application repository NEXT ---
-# Return to the main app directory before cloning
 WORKDIR /app
-# This now uses a standard git clone command for a public repository.
-# Replace the URL with your actual repository URL.
-RUN git clone https://github.com/jterry73/TwitchTV_LED_Matrix.git .
+RUN git clone https://github.com/jterry73/Twitch-LED-Matrix.git .
 
 # --- Install Python dependencies from your cloned repository ---
-# This layer is cached and only re-run if requirements.txt changes.
 RUN pip install --no-cache-dir -r requirements.txt
 
-# The CMD will run the script from the cloned repository.
-# Note: sudo is not needed inside the container
-# as the container itself is run with --privileged.
+# Create the directory for logs
+RUN mkdir /app/logs
+
+# --- Set up the entrypoint script ---
+# Copy the script into the container and make it executable
+COPY entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/entrypoint.sh
+ENTRYPOINT ["entrypoint.sh"]
+
+# The default command to run when the container starts.
+# This is passed to the entrypoint script.
+# Note: sudo is not needed as the container runs as root by default.
 CMD [ "python", "matrix_daemon.py" ]
