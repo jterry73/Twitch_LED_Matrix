@@ -231,10 +231,10 @@ class StaticTextDisplay:
     def update(self, count):
         self.canvas.Clear()
         text_subs = "SUBS"; x_subs = (self.matrix.width - sum(self.font_subs.CharacterWidth(ord(c)) for c in text_subs)) // 2
-        y_subs = int(self.matrix.height * 0.25)
+        y_subs = int(self.matrix.height * 0.30)
         graphics.DrawText(self.canvas, self.font_subs, x_subs, y_subs, SUBS_COLOR, text_subs)
         text_num = str(count); x_num = (self.matrix.width - sum(self.font_num.CharacterWidth(ord(c)) for c in text_num)) // 2
-        y_num = int(self.matrix.height * 0.75)
+        y_num = int(self.matrix.height * 0.85)
         graphics.DrawText(self.canvas, self.font_num, x_num, y_num, NUM_COLOR, text_num)
         self.canvas = self.matrix.SwapOnVSync(self.canvas)
 
@@ -365,7 +365,7 @@ def display_and_animation_loop():
                 elif task_type == 'smiley':
                     smiley = SmileyFace(matrix)
                     smiley.run(duration_seconds=data)
-
+               
             except Exception: # queue.Empty
                 if twitch_logic_active.is_set():
                     with subscriber_lock:
