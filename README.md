@@ -1,4 +1,4 @@
-# Twitch TV LED Matrix Display
+# Twitch LED Matrix Display
 
 This project turns a Raspberry Pi-powered RGB LED matrix into a dynamic, interactive display for your Twitch channel. It features a real-time subscriber counter and triggers custom animations for events like new subscribers, gift subscriptions, and follows. The entire application is containerized with Docker for easy setup and reliable operation.
 
