@@ -1,4 +1,4 @@
-# Twitch LED Matrix Display
+# Twitch TV LED Matrix Display
 
 This project turns a Raspberry Pi-powered RGB LED matrix into a dynamic, interactive display for your Twitch channel. It features a real-time subscriber counter and triggers custom animations for events like new subscribers, gift subscriptions, and follows. The entire application is containerized with Docker for easy setup and reliable operation.
 
@@ -65,7 +65,7 @@ Before running the application, you need to enable the necessary hardware interf
     * Add `isolcpus=3` to the end of the line to dedicate a CPU core to the matrix, improving stability.
 * **(Optional) Blacklist the Sound Module:** To be extra cautious, you can prevent the audio kernel module from loading. Create a new file:
     ```bash
-    sudo nano /etc/modprobe.d/blacklist-snd_bcm2835.conf
+    sudo nano /etc/modprobe.d/blacklist-snd_bcm2535.conf
     ```
     Add the following line to the file:
     ```
@@ -77,7 +77,7 @@ Before running the application, you need to enable the necessary hardware interf
 
 You need to register a new application in the Twitch Developer Console to get the necessary credentials.
 
-* Go to the [Twitch Developer Console](https://dev.twitch.tv/console/apps) and create a new application.
+* Go to the [Twitch](https://dev.twitch.tv/console/apps) Developer Console and create a new application.
 * For the **OAuth Redirect URL**, you must add `http://localhost:17563`.
 * Note your **Client ID** and **Client Secret**.
 
@@ -86,8 +86,8 @@ You need to register a new application in the Twitch Developer Console to get th
 Clone this repository to your Raspberry Pi, create your `.env` file, and install the Python dependencies needed for the authentication script.
 
 ```bash
-git clone [https://github.com/your-username/your-repository-name.git](https://github.com/your-username/your-repository-name.git)
-cd your-repository-name
+git clone [https://github.com/your-username/Twitch-LED-Matrix.git](https://github.com/your-username/Twitch-LED-Matrix.git)
+cd Twitch-LED-Matrix
 
 # Create a .env file with your Twitch credentials
 cp .env.example .env
@@ -97,3 +97,43 @@ nano .env
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+
+4. Perform One-Time Authentication (Mandatory)
+This application requires your permission to access follower and subscriber data. You must run a one-time script on the host machine to authorize the application.
+
+python authenticate.py
+
+Follow the on-screen instructions. This will involve copying a URL into your local browser, authorizing the app, and pasting the resulting URL back into the terminal. This will create a twitch_tokens directory with your credentials, which will be shared with the Docker container.
+
+5. Build and Run the Containers
+With authentication complete, you can now build and run the application with Docker Compose.
+
+docker compose up --build -d
+
+Usage
+Once the containers are running, you can control the application by sending web requests to the control panel, which runs on port 8080 of your Raspberry Pi's IP address.
+
+Start Twitch Integration: http://<your-pi-ip>:8080/start
+
+Stop Twitch Integration: http://<your-pi-ip>:8080/stop
+
+Trigger Fireworks: http://<your-pi-ip>:8080/fireworks
+
+Trigger Heart Animation: http://<your-pi-ip>:8080/heart
+
+Trigger Smiley Animation: http://<your-pi-ip>:8080/smiley
+
+Project Structure
+matrix_daemon.py: The background process that controls the LED matrix and connects to Twitch.
+
+control_panel.py: The CherryPy web server that provides the control endpoints.
+
+authenticate.py: A one-time script to handle user authentication with Twitch.
+
+Dockerfile: The blueprint for building the application's Docker image.
+
+docker-compose.yml: The configuration file for running the multi-container application.
+
+requirements.txt: A list of the Python dependencies.
+
+fonts/: A directory containing the font files for the display.
