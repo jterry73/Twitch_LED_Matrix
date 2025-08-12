@@ -13,7 +13,7 @@ from twitchAPI.twitch import Twitch
 from twitchAPI.oauth import UserAuthenticator, refresh_access_token
 from twitchAPI.eventsub.websocket import EventSubWebsocket
 from twitchAPI.type import AuthScope, TwitchAPIException
-from rgbmatrix import RGBMatrix, RGBMatrixOptions, graphics
+from rgbmatrix import RGBMatrix, RGBMatrixOptions, graphics #type: ignore
 
 load_dotenv()
 
@@ -32,8 +32,8 @@ options.hardware_mapping = 'regular'
 options.gpio_slowdown = 2
 
 # Font file configuration
-FONT_TITLE = "fonts/MinercraftoryRegular-18.bdf"
-FONT_SUBS_NUMBER = "fonts/MinercraftoryRegular-30.bdf"
+FONT_TITLE = "assets/fonts/MinercraftoryRegular-18.bdf"
+FONT_SUBS_NUMBER = "assets/fonts/MinercraftoryRegular-30.bdf"
 
 # Twitch Configuration stored in .env file
 TWITCH_CLIENT_ID = os.environ.get("TWITCH_CLIENT_ID")
@@ -221,7 +221,6 @@ class SmileyFace:
             time.sleep(0.1)
         print("Smiley face animation finished.")
 
-
 class StaticTextDisplay:
     def __init__(self, matrix):
         self.matrix = matrix
@@ -260,7 +259,7 @@ class ScrollingText:
 
 async def on_subscribe(data: dict):
     global subscriber_count
-    user_name = data.event.user_name
+    user_name = data.event.user_name #type: ignore
     print(f"New subscriber: {user_name}")
     with subscriber_lock:
         subscriber_count += 1
@@ -271,8 +270,8 @@ async def on_subscribe(data: dict):
 
 async def on_sub_gift(data: dict):
     global subscriber_count
-    user_name = data.event.user_name
-    gift_count = data.event.total
+    user_name = data.event.user_name #type: ignore
+    gift_count = data.event.total #type: ignore
     print(f"{user_name} gifted {gift_count} subs!")
     with subscriber_lock:
         subscriber_count += gift_count
@@ -286,7 +285,7 @@ async def on_sub_gift(data: dict):
     animation_queue.put(('scroll', scroll_text))
 
 async def on_follow(data: dict):
-    user_name = data.event.user_name
+    user_name = data.event.user_name #type: ignore
     print(f"New follower: {user_name}")
     scroll_text = [ (f"{user_name} just followed!", SCROLL_COLOR) ]
     animation_queue.put(('fireworks', FIREWORK_DURATION))
@@ -298,8 +297,8 @@ def token_update_callback(token: str, refresh_token: str):
         json.dump({'token': token, 'refresh_token': refresh_token}, f)
 
 async def twitch_events_task():
-    twitch = await Twitch(TWITCH_CLIENT_ID, TWITCH_CLIENT_SECRET)
-    twitch.user_auth_refresh_callback = token_update_callback
+    twitch = await Twitch(TWITCH_CLIENT_ID, TWITCH_CLIENT_SECRET) #type: ignore
+    twitch.user_auth_refresh_callback = token_update_callback #type: ignore
 
     target_scope = [AuthScope.CHANNEL_READ_SUBSCRIPTIONS, AuthScope.MODERATOR_READ_FOLLOWERS]
     
@@ -311,14 +310,14 @@ async def twitch_events_task():
     with open(TOKEN_FILE, 'r') as f:
         tokens = json.load(f)
     try:
-        token, refresh_token = await refresh_access_token(tokens['refresh_token'], TWITCH_CLIENT_ID, TWITCH_CLIENT_SECRET)
+        token, refresh_token = await refresh_access_token(tokens['refresh_token'], TWITCH_CLIENT_ID, TWITCH_CLIENT_SECRET) #type: ignore
         await twitch.set_user_authentication(token, target_scope, refresh_token)
         print("Successfully refreshed and set user token.")
     except TwitchAPIException:
         print("Failed to refresh token. Please re-authenticate via the control panel.")
         return
     
-    user_info_gen = twitch.get_users(logins=[TWITCH_USERNAME])
+    user_info_gen = twitch.get_users(logins=[TWITCH_USERNAME]) #type: ignore
     user_info = [u async for u in user_info_gen]
     if not user_info:
         print(f"Could not find user: {TWITCH_USERNAME}")
@@ -329,9 +328,9 @@ async def twitch_events_task():
     eventsub = EventSubWebsocket(twitch)
     eventsub.start()
     
-    await eventsub.listen_channel_subscribe(broadcaster_id, on_subscribe)
-    await eventsub.listen_channel_subscription_gift(broadcaster_id, on_sub_gift)
-    await eventsub.listen_channel_follow_v2(broadcaster_id, broadcaster_id, on_follow)
+    await eventsub.listen_channel_subscribe(broadcaster_id, on_subscribe) #type: ignore
+    await eventsub.listen_channel_subscription_gift(broadcaster_id, on_sub_gift) #type: ignore
+    #await eventsub.listen_channel_follow_v2(broadcaster_id, broadcaster_id, on_follow) #type: ignore
     print("Successfully subscribed to all events.")
 
     try:

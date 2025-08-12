@@ -18,7 +18,7 @@ def send_command(command_dict):
         # Re-raise as a CherryPy HTTP error to give feedback to the user
         raise cherrypy.HTTPError(500, f"Daemon not responding: {e}")
     finally:
-        sock.close()
+        sock.close() #type: ignore
     return f"Command '{command_dict.get('command')}' sent successfully."
 
 class WebServer:
