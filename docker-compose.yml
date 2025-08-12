@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  # The daemon service that controls the LED matrix and talks to Twitch
+  daemon:
+    # Build the image from the Dockerfile in the current directory
+    build: .
+    container_name: matrix_daemon
+    # --privileged is required to give the container access to the Pi's hardware
+    privileged: true
+    # Share the /tmp directory with the host so the control panel can access the socket file
+    volumes:
+      - /tmp:/tmp
+    # This service will use the default CMD from your Dockerfile
+
+  # The control panel service that runs the CherryPy web server
+  control-panel:
+    # Build the image from the same Dockerfile
+    build: .
+    container_name: matrix_control_panel
+    # Override the default command to run the control panel script instead
+    command: ["python", "control_panel.py"]
+    # Map port 8080 on your Raspberry Pi to port 8080 in the container
+    depends_on:
+      - daemon
+    ports:
+      - "8080:8080"
+    # Share the /tmp directory to communicate with the daemon's socket
+    volumes:
+      - /tmp:/tmp

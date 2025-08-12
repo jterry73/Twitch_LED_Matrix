@@ -1,0 +1,11 @@
+# Ignore the virtual environment if it's in your repository
+.venv/
+
+# Ignore Python cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ignore the Dockerfile itself
+Dockerfile
