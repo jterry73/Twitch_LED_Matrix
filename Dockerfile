@@ -15,8 +15,13 @@ RUN apt-get update && apt-get install -y \
 # --- Clone and build the rpi-rgb-led-matrix library FIRST ---
 RUN git clone https://github.com/hzeller/rpi-rgb-led-matrix.git /rpi-rgb-led-matrix
 WORKDIR /rpi-rgb-led-matrix
-RUN make build-python PYTHON=$(which python)
-RUN make install-python PYTHON=$(which python)
+# First, build the main C++ library
+RUN make
+
+# Now, navigate to the Python bindings directory and install them
+WORKDIR /rpi-rgb-led-matrix/bindings/python
+RUN make
+RUN pip install .
 
 # --- Copy your application into the container ---
 WORKDIR /app
