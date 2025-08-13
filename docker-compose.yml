@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   # The daemon service that controls the LED matrix and talks to Twitch
   daemon:
@@ -15,6 +17,9 @@ services:
       - TWITCH_CLIENT_ID=YOUR_CLIENT_ID_HERE
       - TWITCH_CLIENT_SECRET=YOUR_CLIENT_SECRET_HERE
       - TWITCH_USERNAME=YOUR_TWITCH_USERNAME
+    restart:
+      policy: on-failure
+      max_attempts: 3
 
   # The control panel service that runs the CherryPy web server
   control-panel:
@@ -29,3 +34,6 @@ services:
       - /tmp:/tmp
       # Mount a volume for persistent logs
       - ./logs:/app/logs
+    restart:
+      policy: on-failure
+      max_attempts: 3
