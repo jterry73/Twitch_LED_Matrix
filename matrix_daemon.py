@@ -322,7 +322,7 @@ async def twitch_events_task():
     
     await eventsub.listen_channel_subscribe(broadcaster_id, on_subscribe) #type: ignore
     await eventsub.listen_channel_subscription_gift(broadcaster_id, on_sub_gift) #type: ignore
-    await eventsub.listen_channel_follow_v2(broadcaster_id, broadcaster_id, on_follow) #type: ignore
+    #await eventsub.listen_channel_follow_v2(broadcaster_id, broadcaster_id, on_follow) #type: ignore
     app_log.info("Successfully subscribed to all events.")
 
     try:
