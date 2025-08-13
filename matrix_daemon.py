@@ -7,14 +7,15 @@ import os
 import sys
 import json
 import socket
-import logging
-from logging.handlers import RotatingFileHandler
+from dotenv import load_dotenv
 from queue import Queue
 from twitchAPI.twitch import Twitch
 from twitchAPI.oauth import UserAuthenticator, refresh_access_token
 from twitchAPI.eventsub.websocket import EventSubWebsocket
 from twitchAPI.type import AuthScope, TwitchAPIException
 from rgbmatrix import RGBMatrix, RGBMatrixOptions, graphics
+
+load_dotenv()
 
 # -------------------------------------------------------------------------
 # Configuration
@@ -34,11 +35,11 @@ options.gpio_slowdown = 2
 FONT_TITLE = "fonts/MinercraftoryRegular-18.bdf"
 FONT_SUBS_NUMBER = "fonts/MinercraftoryRegular-30.bdf"
 
-# Twitch Configuration stored in .env file (or passed via Docker Compose)
+# Twitch Configuration stored in .env file
 TWITCH_CLIENT_ID = os.environ.get("TWITCH_CLIENT_ID")
 TWITCH_CLIENT_SECRET = os.environ.get("TWITCH_CLIENT_SECRET")
 TWITCH_USERNAME = os.environ.get("TWITCH_USERNAME")
-TOKEN_FILE = f"/etc/twitch_matrix/{TWITCH_USERNAME}_tokens.json"
+TOKEN_FILE = f"/etc/twitch_matrix/{TWITCH_USERNAME}_tokens.json" # Using a standard location for app data
 
 matrix = RGBMatrix(options=options)
 
@@ -75,21 +76,6 @@ daemon_shutdown_event = threading.Event()
 twitch_thread = None
 
 # -------------------------------------------------------------------------
-# Logging Setup
-# -------------------------------------------------------------------------
-log_formatter = logging.Formatter('%(asctime)s %(levelname)s %(funcName)s(%(lineno)d) %(message)s')
-logFile = '/app/logs/matrix_daemon.log'
-my_handler = RotatingFileHandler(logFile, mode='a', maxBytes=5*1024*1024, 
-                                 backupCount=2, encoding=None, delay=0)
-my_handler.setFormatter(log_formatter)
-my_handler.setLevel(logging.INFO)
-
-app_log = logging.getLogger('root')
-app_log.setLevel(logging.INFO)
-app_log.addHandler(my_handler)
-app_log.addHandler(logging.StreamHandler(sys.stdout)) # Also log to console
-
-# -------------------------------------------------------------------------
 # Animation and Display Classes
 # -------------------------------------------------------------------------
 class FireworkShow:
@@ -122,7 +108,7 @@ class FireworkShow:
 
     def run(self, duration_seconds=10):
         start_time = time.time()
-        app_log.info("Starting firework celebration!")
+        print("Starting firework celebration!")
         while time.time() - start_time < duration_seconds and not daemon_shutdown_event.is_set():
             self.canvas.Clear()
             if len(self.rockets) < MAX_ROCKETS and random.random() < 0.2:
@@ -151,7 +137,7 @@ class FireworkShow:
                     for i in range(TRAIL_SIZE): graphics.DrawLine(self.canvas, int(trail.x), int(trail.y) + i, int(trail.x) + TRAIL_SIZE - 1, int(trail.y) + i, color)
             self.canvas = self.matrix.SwapOnVSync(self.canvas)
             time.sleep(0.04)
-        app_log.info("Firework celebration finished.")
+        print("Firework celebration finished.")
 
 class PulsatingHeart:
     """Manages the pulsating heart animation."""
@@ -161,7 +147,7 @@ class PulsatingHeart:
 
     def run(self, duration_seconds=10):
         start_time = time.time()
-        app_log.info("Starting heart animation!")
+        print("Starting heart animation!")
         
         while time.time() - start_time < duration_seconds and not daemon_shutdown_event.is_set():
             self.canvas.Clear()
@@ -186,7 +172,7 @@ class PulsatingHeart:
 
             self.canvas = self.matrix.SwapOnVSync(self.canvas)
             time.sleep(0.04)
-        app_log.info("Heart animation finished.")
+        print("Heart animation finished.")
 
 class SmileyFace:
     """Manages the smiley face animation."""
@@ -196,7 +182,7 @@ class SmileyFace:
 
     def run(self, duration_seconds=10):
         start_time = time.time()
-        app_log.info("Starting smiley face animation!")
+        print("Starting smiley face animation!")
         yellow = graphics.Color(255, 255, 0)
         black = graphics.Color(0, 0, 0)
 
@@ -207,9 +193,11 @@ class SmileyFace:
         while time.time() - start_time < duration_seconds and not daemon_shutdown_event.is_set():
             self.canvas.Clear()
             
+            # Draw filled yellow circle for the face
             for r in range(radius, 0, -1):
                 graphics.DrawCircle(self.canvas, int(center_x), int(center_y), r, yellow)
 
+            # Eyes (ovals)
             eye_offset_x = 10
             eye_offset_y = 8
             eye_radius_h = 4
@@ -219,15 +207,20 @@ class SmileyFace:
                     graphics.DrawCircle(self.canvas, int(center_x - eye_offset_x), int(center_y - eye_offset_y), r_h, black)
                     graphics.DrawCircle(self.canvas, int(center_x + eye_offset_x), int(center_y - eye_offset_y), r_h, black)
 
+
+            # Smile (arc)
             smile_radius = 15
             smile_center_y = center_y + 5
             for i in range(-12, 13):
+                # Simple circle equation to create an arc
                 y_offset = math.sqrt(max(0, smile_radius**2 - i**2))
                 graphics.DrawLine(self.canvas, int(center_x + i), int(smile_center_y + y_offset - 5), int(center_x + i), int(smile_center_y + y_offset - 3), black)
 
+
             self.canvas = self.matrix.SwapOnVSync(self.canvas)
             time.sleep(0.1)
-        app_log.info("Smiley face animation finished.")
+        print("Smiley face animation finished.")
+
 
 class StaticTextDisplay:
     def __init__(self, matrix):
@@ -238,10 +231,10 @@ class StaticTextDisplay:
     def update(self, count):
         self.canvas.Clear()
         text_subs = "SUBS"; x_subs = (self.matrix.width - sum(self.font_subs.CharacterWidth(ord(c)) for c in text_subs)) // 2
-        y_subs = int(self.matrix.height * 0.25)
+        y_subs = int(self.matrix.height * 0.30)
         graphics.DrawText(self.canvas, self.font_subs, x_subs, y_subs, SUBS_COLOR, text_subs)
         text_num = str(count); x_num = (self.matrix.width - sum(self.font_num.CharacterWidth(ord(c)) for c in text_num)) // 2
-        y_num = int(self.matrix.height * 0.75)
+        y_num = int(self.matrix.height * 0.80)
         graphics.DrawText(self.canvas, self.font_num, x_num, y_num, NUM_COLOR, text_num)
         self.canvas = self.matrix.SwapOnVSync(self.canvas)
 
@@ -252,14 +245,14 @@ class ScrollingText:
     def run(self):
         total_width = sum(sum(self.font.CharacterWidth(ord(c)) for c in text) for text, color in self.text_parts)
         pos = self.canvas.width
-        app_log.info("Scrolling text...")
+        print("Scrolling text...")
         while pos + total_width > 0 and not daemon_shutdown_event.is_set():
             self.canvas.Clear()
             current_x, y = pos, int((self.matrix.height * 0.5) + (self.font.height / 3))
             for text, color in self.text_parts: current_x += graphics.DrawText(self.canvas, self.font, current_x, y, color, text)
             pos -= 1; time.sleep(0.03)
             self.canvas = self.matrix.SwapOnVSync(self.canvas)
-        app_log.info("Scrolling text finished.")
+        print("Scrolling text finished.")
 
 # -------------------------------------------------------------------------
 # Twitch and Main Application Logic
@@ -268,7 +261,7 @@ class ScrollingText:
 async def on_subscribe(data: dict):
     global subscriber_count
     user_name = data.event.user_name
-    app_log.info(f"New subscriber: {user_name}")
+    print(f"New subscriber: {user_name}")
     with subscriber_lock:
         subscriber_count += 1
     
@@ -280,7 +273,7 @@ async def on_sub_gift(data: dict):
     global subscriber_count
     user_name = data.event.user_name
     gift_count = data.event.total
-    app_log.info(f"{user_name} gifted {gift_count} subs!")
+    print(f"{user_name} gifted {gift_count} subs!")
     with subscriber_lock:
         subscriber_count += gift_count
     
@@ -294,13 +287,13 @@ async def on_sub_gift(data: dict):
 
 async def on_follow(data: dict):
     user_name = data.event.user_name
-    app_log.info(f"New follower: {user_name}")
+    print(f"New follower: {user_name}")
     scroll_text = [ (f"{user_name} just followed!", SCROLL_COLOR) ]
     animation_queue.put(('fireworks', FIREWORK_DURATION))
     animation_queue.put(('scroll', scroll_text))
     
 def token_update_callback(token: str, refresh_token: str):
-    app_log.info("User token refreshed, saving to file...")
+    print("User token refreshed, saving to file...")
     with open(TOKEN_FILE, 'w') as f:
         json.dump({'token': token, 'refresh_token': refresh_token}, f)
 
@@ -311,24 +304,24 @@ async def twitch_events_task():
     target_scope = [AuthScope.CHANNEL_READ_SUBSCRIPTIONS, AuthScope.MODERATOR_READ_FOLLOWERS]
     
     if not os.path.exists(TOKEN_FILE):
-        app_log.error("Token file not found. Please authenticate via the control panel first.")
+        print("Token file not found. Please authenticate via the control panel first.")
         return
 
-    app_log.info("Found token file, attempting to refresh...")
+    print("Found token file, attempting to refresh...")
     with open(TOKEN_FILE, 'r') as f:
         tokens = json.load(f)
     try:
         token, refresh_token = await refresh_access_token(tokens['refresh_token'], TWITCH_CLIENT_ID, TWITCH_CLIENT_SECRET)
         await twitch.set_user_authentication(token, target_scope, refresh_token)
-        app_log.info("Successfully refreshed and set user token.")
+        print("Successfully refreshed and set user token.")
     except TwitchAPIException:
-        app_log.error("Failed to refresh token. Please re-authenticate via the control panel.")
+        print("Failed to refresh token. Please re-authenticate via the control panel.")
         return
     
     user_info_gen = twitch.get_users(logins=[TWITCH_USERNAME])
     user_info = [u async for u in user_info_gen]
     if not user_info:
-        app_log.error(f"Could not find user: {TWITCH_USERNAME}")
+        print(f"Could not find user: {TWITCH_USERNAME}")
         await twitch.close()
         return
     broadcaster_id = user_info[0].id
@@ -339,13 +332,13 @@ async def twitch_events_task():
     await eventsub.listen_channel_subscribe(broadcaster_id, on_subscribe)
     await eventsub.listen_channel_subscription_gift(broadcaster_id, on_sub_gift)
     await eventsub.listen_channel_follow_v2(broadcaster_id, broadcaster_id, on_follow)
-    app_log.info("Successfully subscribed to all events.")
+    print("Successfully subscribed to all events.")
 
     try:
         while not twitch_shutdown_event.is_set():
             await asyncio.sleep(0.1)
     finally:
-        app_log.info("Stopping EventSub and closing Twitch connection.")
+        print("Stopping EventSub and closing Twitch connection.")
         await eventsub.stop()
         await twitch.close()
 
@@ -354,7 +347,7 @@ def display_and_animation_loop():
     static_display = StaticTextDisplay(matrix)
     
     try:
-        app_log.info("Starting display and animation loop.")
+        print("Starting display and animation loop.")
         while not daemon_shutdown_event.is_set():
             try:
                 task_type, data = animation_queue.get(timeout=0.1)
@@ -384,7 +377,7 @@ def display_and_animation_loop():
     except KeyboardInterrupt:
         daemon_shutdown_event.set()
     finally:
-        app_log.info("\nExiting display and animation loop.")
+        print("\nExiting display and animation loop.")
         matrix.Clear()
 
 # -------------------------------------------------------------------------
@@ -397,9 +390,9 @@ def handle_command(command):
     
     if cmd == 'start':
         if twitch_logic_active.is_set():
-            app_log.info("Received start command, but logic is already running.")
+            print("Received start command, but logic is already running.")
             return
-        app_log.info("Received start command.")
+        print("Received start command.")
         twitch_logic_active.set()
         twitch_shutdown_event.clear()
         twitch_thread = threading.Thread(target=lambda: asyncio.run(twitch_events_task()), daemon=True)
@@ -407,22 +400,22 @@ def handle_command(command):
 
     elif cmd == 'stop':
         if not twitch_logic_active.is_set():
-            app_log.info("Received stop command, but logic is not running.")
+            print("Received stop command, but logic is not running.")
             return
-        app_log.info("Received stop command.")
+        print("Received stop command.")
         twitch_shutdown_event.set()
         twitch_logic_active.clear()
 
     elif cmd == 'fireworks':
-        app_log.info("Received fireworks command, adding to queue.")
+        print("Received fireworks command, adding to queue.")
         animation_queue.put(('fireworks', FIREWORK_DURATION))
         
     elif cmd == 'heart':
-        app_log.info("Received heart command, adding to queue.")
+        print("Received heart command, adding to queue.")
         animation_queue.put(('heart', HEART_DURATION))
         
     elif cmd == 'smiley':
-        app_log.info("Received smiley command, adding to queue.")
+        print("Received smiley command, adding to queue.")
         animation_queue.put(('smiley', SMILEY_DURATION))
 
 def socket_server_thread():
@@ -436,7 +429,7 @@ def socket_server_thread():
     sock.bind(SOCKET_FILE)
     os.chmod(SOCKET_FILE, 0o777)
     sock.listen(1)
-    app_log.info(f"Socket server listening on {SOCKET_FILE}")
+    print(f"Socket server listening on {SOCKET_FILE}")
 
     while not daemon_shutdown_event.is_set():
         connection, client_address = sock.accept()
@@ -446,17 +439,11 @@ def socket_server_thread():
                 command = json.loads(data.decode('utf-8'))
                 handle_command(command)
         except Exception as e:
-            app_log.error(f"Error handling command: {e}")
+            print(f"Error handling command: {e}")
         finally:
             connection.close()
 
 if __name__ == '__main__':
-    # --- PRE-STARTUP CHECK ---
-    if not os.path.exists(TOKEN_FILE):
-        app_log.error(f"FATAL: Token file not found at {TOKEN_FILE}.")
-        app_log.error("Please run the 'authenticate.py' script on the host machine first.")
-        sys.exit(1)
-
     # This daemon must be run with sudo
     socket_thread = threading.Thread(target=socket_server_thread, daemon=True)
     socket_thread.start()
@@ -468,7 +455,7 @@ if __name__ == '__main__':
         while True:
             time.sleep(1)
     except KeyboardInterrupt:
-        app_log.info("\nShutting down daemon.")
+        print("\nShutting down daemon.")
         daemon_shutdown_event.set()
         twitch_shutdown_event.set()
         matrix.Clear()
