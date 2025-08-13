@@ -221,10 +221,10 @@ class StaticTextDisplay:
     def update(self, count, current_config):
         self.canvas.Clear()
         text_subs = "SUBS"; x_subs = (self.matrix.width - sum(self.font_subs.CharacterWidth(ord(c)) for c in text_subs)) // 2
-        y_subs = int(self.matrix.height * 0.25)
+        y_subs = int(self.matrix.height * 0.30)
         graphics.DrawText(self.canvas, self.font_subs, x_subs, y_subs, current_config['SUBS_COLOR'], text_subs)
         text_num = str(count); x_num = (self.matrix.width - sum(self.font_num.CharacterWidth(ord(c)) for c in text_num)) // 2
-        y_num = int(self.matrix.height * 0.75)
+        y_num = int(self.matrix.height * 0.80)
         graphics.DrawText(self.canvas, self.font_num, x_num, y_num, current_config['NUM_COLOR'], text_num)
         self.canvas = self.matrix.SwapOnVSync(self.canvas)
 
