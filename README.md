@@ -91,26 +91,19 @@ git clone https://github.com/jterry73/twitch-led-matrix.git
 cd twitch-led-matrix
 python3 setup.py
 ```
-The setup script will prompt you for your Twitch credentials and guide you through the browser-based authorization
+The setup script will prompt you for your Twitch credentials and guide you through the browser-based authorization. Follow the on-screen instructions. This will involve copying a URL into your local browser, authorizing the app, and pasting the resulting URL back into the terminal. This will create a twitch_tokens directory with your credentials, which will be shared with the Docker container.
 
-### 4. Perform One-Time Authentication (Mandatory)
-This application requires your permission to access follower and subscriber data. You must run a one-time script on the host machine to authorize the application.
-
-```
-python authenticate.py
-```
-
-Follow the on-screen instructions. This will involve copying a URL into your local browser, authorizing the app, and pasting the resulting URL back into the terminal. This will create a twitch_tokens directory with your credentials, which will be shared with the Docker container.
-
-5. Build and Run the Containers
+### 5. Build and Run the Containers
 With authentication complete, you can now build and run the application with Docker Compose.
 
 ```
 docker compose up --build -d
 ```
 
-### 5. Usage and Controlling the Application
+### 6. Usage and Controlling the Application (WIP)
 Once the containers are running, you can control the application by sending web requests to the control panel, which runs on port 8080 of your Raspberry Pi's IP address.
+
+Start by pointing your browser to http://\<your-pi-ip>:8080. This will open up the web control panel.  From this landing page, you can start and stop the Twitch EventSub, trigger manual activation of various animations, or adjust the animation settings.  You can also access several endpoints directly, which perform a few of the functions listed above.
 
 Start Twitch Integration: http://\<your-pi-ip>:8080/start
 
