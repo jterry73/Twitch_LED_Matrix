@@ -10,6 +10,11 @@ services:
       - ./twitch_tokens:/etc/twitch_matrix
       # Mount a volume for persistent logs
       - ./logs:/app/logs
+    # Inject credentials as environment variables at runtime
+    environment:
+      - TWITCH_CLIENT_ID=YOUR_CLIENT_ID_HERE
+      - TWITCH_CLIENT_SECRET=YOUR_CLIENT_SECRET_HERE
+      - TWITCH_USERNAME=YOUR_TWITCH_USERNAME
 
   # The control panel service that runs the CherryPy web server
   control-panel:
