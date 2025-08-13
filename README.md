@@ -86,7 +86,7 @@ You need to register a new application in the Twitch Developer Console to get th
 Clone this repository to your Raspberry Pi, create your `.env` file, and install the Python dependencies needed for the authentication script.
 
 ```bash
-git clone [https://github.com/jterry73/Twitch-LED-Matrix.git](https://github.com/jterry73/Twitch-LED-Matrix.git)
+git clone https://github.com/jterry73/Twitch-LED-Matrix.git
 cd Twitch-LED-Matrix
 
 # Create a .env file with your Twitch credentials
