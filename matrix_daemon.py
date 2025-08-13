@@ -386,6 +386,10 @@ def handle_command(command):
             app_log.info("Received start command, but logic is already running.")
             return
         app_log.info("Received start command.")
+        app_log.info("Resetting subscriber count to 0.")
+        with subscriber_lock:
+            global subscriber_count
+            subscriber_count = 0
         twitch_logic_active.set()
         twitch_shutdown_event.clear()
         twitch_thread = threading.Thread(target=lambda: asyncio.run(twitch_events_task()), daemon=True)
