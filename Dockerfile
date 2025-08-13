@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     git \
     python3-dev \
+    cython3 \
     python3-pil \
     && rm -rf /var/lib/apt/lists/*
 
