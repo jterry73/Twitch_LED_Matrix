@@ -14,7 +14,7 @@
             max-width: 800px;
         }
         .card {
-            background-color: #2c2c2c;
+            background-color:#1a1a1a;
             border: 1px solid #444;
             margin-bottom: 2rem;
             color:#f0f0f0
@@ -43,19 +43,22 @@
     <div class="container mt-5">
         <div class="card p-4 rounded-3 shadow">
             <h1 class="text-center mb-4">Twitch LED Matrix Control</h1>
-            <div class="text-center">
-                <h5 class="mb-3">Twitch Integration</h5>
-                <button class="btn btn-success" onclick="sendCommand('start')">Start</button>
-                <button class="btn btn-danger" onclick="sendCommand('stop')">Stop</button>
+            <div class="card p-4 rounded-3 shadow">
+                <div class="text-center">
+                    <h5 class="mb-3">Twitch Integration</h5>
+                    <div class="card-body rounded-3">
+                        <button class="btn btn-success" onclick="sendCommand('start')">Start</button>
+                        <button class="btn btn-danger" onclick="sendCommand('stop')">Stop</button>
+                    </div>
+                </div>
+                <hr class="my-4">
+                <div class="text-center">
+                    <h5 class="mb-3">Manual Animations</h5>
+                    <button class="btn btn-primary" onclick="sendCommand('fireworks')">Fireworks</button>
+                    <button class="btn btn-info" onclick="sendCommand('heart')">Heart</button>
+                    <button class="btn btn-warning" onclick="sendCommand('smiley')">Smiley</button>
+                </div>
             </div>
-            <hr class="my-4">
-            <div class="text-center">
-                <h5 class="mb-3">Manual Animations</h5>
-                <button class="btn btn-primary" onclick="sendCommand('fireworks')">Fireworks</button>
-                <button class="btn btn-info" onclick="sendCommand('heart')">Heart</button>
-                <button class="btn btn-warning" onclick="sendCommand('smiley')">Smiley</button>
-            </div>
-        </div>
 
         <div class="card p-4 rounded-3 shadow">
             <h2 class="text-center mb-4">Live Configuration</h2>
@@ -67,14 +70,17 @@
                         <div class="mb-2">
                             <label for="FIREWORK_DURATION" class="form-label">Fireworks</label>
                             <input type="range" class="form-range" min="1" max="30" value="5" id="FIREWORK_DURATION">
+                            <output for="FIREWORK_DURATION" id="firework-duration-output">5</output>
                         </div>
                         <div class="mb-2">
                             <label for="HEART_DURATION" class="form-label">Heart</label>
                             <input type="range" class="form-range" min="1" max="30" value="10" id="HEART_DURATION">
+                            <output for="HEART_DURATION" id="heart-duration-output">10</output>
                         </div>
                         <div class="mb-2">
                             <label for="SMILEY_DURATION" class="form-label">Smiley</label>
                             <input type="range" class="form-range" min="1" max="30" value="10" id="SMILEY_DURATION">
+                            <output for="SMILEY_DURATION" id="smiley-duration-output">10</output>
                         </div>
                     </div>
                     <!-- Firework Physics -->
@@ -83,14 +89,17 @@
                         <div class="mb-2">
                             <label for="MAX_ROCKETS" class="form-label">Max Rockets</label>
                             <input type="range" class="form-range" min="1" max="20" value="10" id="MAX_ROCKETS">
+                            <output for="MAX_ROCKETS" id="max-rockets-output">10</output>
                         </div>
                          <div class="mb-2">
                             <label for="ROCKET_SIZE" class="form-label">Rocket Size</label>
                             <input type="range" class="form-range" min="1" max="5" value="2" id="ROCKET_SIZE">
+                            <output for="ROCKET_SIZE" id="rocket-size-output">2</output>
                         </div>
                         <div class="mb-2">
                             <label for="PARTICLE_SIZE" class="form-label">Particle Size</label>
                             <input type="range" class="form-range" min="1" max="5" value="2" id="PARTICLE_SIZE">
+                            <output for="PARTICLE_SIZE" id="particle-size-output">2</output>
                         </div>
                     </div>
                     <!-- Colors -->
@@ -167,6 +176,33 @@
             statusAlert.textContent = message;
             statusAlert.style.display = 'block';
         }
+
+        const fireworkDurationRangeInput = document.getElementById('FIREWORK_DURATION');
+        const fireworkMaxRocketsInput = document.getElementById('MAX_ROCKETS');
+        const fireworkRocketSizeInput = document.getElementById('ROCKET_SIZE');
+        const fireworkParticleSizeInput = document.getElementById('PARTICLE_SIZE');
+        const heartDurationRangeInput = document.getElementById('HEART_DURATION');
+        const smileyDurationRangeInput = document.getElementById('SMILEY_DURATION');
+
+        fireworkDurationRangeInput.addEventListener('input', function() {
+            document.getElementById('firework-duration-output').textContent = this.value;
+        });
+        fireworkMaxRocketsInput.addEventListener('input', function() {
+            document.getElementById('max-rockets-output').textContent = this.value;
+        });
+        fireworkRocketSizeInput.addEventListener('input', function() {
+            document.getElementById('rocket-size-output').textContent = this.value;
+        });
+        fireworkParticleSizeInput.addEventListener('input', function() {
+            document.getElementById('particle-size-output').textContent = this.value;
+        });
+        heartDurationRangeInput.addEventListener('input', function() {
+            document.getElementById('heart-duration-output').textContent = this.value;
+        });
+        smileyDurationRangeInput.addEventListener('input', function() {
+            document.getElementById('smiley-duration-output').textContent = this.value;
+        });
+
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
