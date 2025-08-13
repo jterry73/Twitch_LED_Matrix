@@ -34,7 +34,7 @@ COPY . .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Create the directory for logs
-RUN mkdir /app/logs
+RUN mkdir -p /app/logs
 
 # --- Set up the entrypoint script ---
 RUN chmod +x /app/entrypoint.sh
