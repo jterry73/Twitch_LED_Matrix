@@ -1,4 +1,4 @@
-# Twitch TV LED Matrix Display
+# Twitch LED Matrix Display
 
 This project turns a Raspberry Pi-powered RGB LED matrix into a dynamic, interactive display for your Twitch channel. It features a real-time subscriber counter and triggers custom animations for events like new subscribers, gift subscriptions, and follows. The entire application is containerized with Docker for easy setup and reliable operation.
 
@@ -21,6 +21,7 @@ The application is split into two components:
     * `/stop`: Disconnects from Twitch.
     * `/fireworks`, `/heart`, `/smiley`: Trigger animations manually.
 * **Dockerized:** The entire application runs in two isolated containers, managed by Docker Compose for stability and easy deployment.
+* **Secure Communication:** All communication with the Twitch API occurs over a secure [WebSocket](https://dev.twitch.tv/docs/eventsub/handling-websocket-events/) connection for real-time, end-to-end encrypted events.
 
 ---
 ## Hardware Requirements
@@ -81,23 +82,16 @@ You need to register a new application in the Twitch Developer Console to get th
 * For the **OAuth Redirect URL**, you must add `http://localhost:17563`.
 * Note your **Client ID** and **Client Secret**.
 
-### 3. Clone the Repository and Configure
+### 3. Clone the Repository and Run the Setup Script
 
-Clone this repository to your Raspberry Pi, create your `.env` file, and install the Python dependencies needed for the authentication script.
+Clone this repository to your Raspberry Pi and run the interactive setup script. This script will guide you through configuring your credentials, setting up the Python environment, and performing the one-time Twitch authentication.
 
 ```bash
 git clone https://github.com/jterry73/Twitch-LED-Matrix.git
 cd Twitch-LED-Matrix
-
-# Create a .env file with your Twitch credentials
-cp .env.example .env
-nano .env
-
-# Install dependencies into a virtual environment
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+python3 setup.py
 ```
+The setup script will prompt you for your Twitch credentials and guide you through the browser-based authorization
 
 ### 4. Perform One-Time Authentication (Mandatory)
 This application requires your permission to access follower and subscriber data. You must run a one-time script on the host machine to authorize the application.
@@ -127,18 +121,3 @@ Trigger Fireworks: http://\<your-pi-ip>:8080/fireworks
 Trigger Heart Animation: http://\<your-pi-ip>:8080/heart
 
 Trigger Smiley Animation: http://\<your-pi-ip>:8080/smiley
-
-#### Project Structure
-matrix_daemon.py: The background process that controls the LED matrix and connects to Twitch.
-
-control_panel.py: The CherryPy web server that provides the control endpoints.
-
-authenticate.py: A one-time script to handle user authentication with Twitch.
-
-Dockerfile: The blueprint for building the application's Docker image.
-
-docker-compose.yml: The configuration file for running the multi-container application.
-
-requirements.txt: A list of the Python dependencies.
-
-assets/fonts/: A directory containing the font files for the display.
