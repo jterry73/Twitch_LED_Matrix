@@ -17,9 +17,7 @@ services:
       - TWITCH_CLIENT_ID=YOUR_CLIENT_ID_HERE
       - TWITCH_CLIENT_SECRET=YOUR_CLIENT_SECRET_HERE
       - TWITCH_USERNAME=YOUR_TWITCH_USERNAME
-    restart:
-      policy: on-failure
-      max_attempts: 3
+    restart: unless-stopped
 
   # The control panel service that runs the CherryPy web server
   control-panel:
@@ -34,6 +32,4 @@ services:
       - /tmp:/tmp
       # Mount a volume for persistent logs
       - ./logs:/app/logs
-    restart:
-      policy: on-failure
-      max_attempts: 3
+    restart: unless-stopped
