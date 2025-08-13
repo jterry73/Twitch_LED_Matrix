@@ -443,5 +443,24 @@ def socket_server_thread():
             connection.close()
 
 if __name__ == '__main__':
-    # (The rest of the script remains the same)
-    # ...
+    # --- PRE-STARTUP CHECK ---
+    if not os.path.exists(TOKEN_FILE):
+        app_log.error(f"FATAL: Token file not found at {TOKEN_FILE}.")
+        app_log.error("Please run the 'authenticate.py' script on the host machine first.")
+        sys.exit(1)
+
+    # This daemon must be run with sudo
+    socket_thread = threading.Thread(target=socket_server_thread, daemon=True)
+    socket_thread.start()
+    
+    display_thread = threading.Thread(target=display_and_animation_loop, daemon=True)
+    display_thread.start()
+    
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        app_log.info("\nShutting down daemon.")
+        daemon_shutdown_event.set()
+        twitch_shutdown_event.set()
+        matrix.Clear()
