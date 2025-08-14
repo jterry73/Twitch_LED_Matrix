@@ -63,6 +63,7 @@ config = {
     'HEART_DURATION': 10,
     'SMILEY_DURATION': 10,
     'HEART_COLOR': graphics.Color(255, 20, 147),
+    'BRIGHTNESS': 100, # Brightness (0-100)
     'GRAVITY': 0.1,
     'MAX_ROCKETS': 10,
     'ROCKET_LIFESPAN': 40,
@@ -334,11 +335,16 @@ async def twitch_events_task():
         await twitch.close()
 
 def display_and_animation_loop():
+    """Main synchronous loop to handle animations and display."""
     static_display = StaticTextDisplay(matrix)
     
     try:
-        app_log.info("Starting display and animation loop.")
+        print("Starting display and animation loop.")
         while not daemon_shutdown_event.is_set():
+            # Apply the current brightness setting in every loop iteration
+            with subscriber_lock:
+                matrix.brightness = config['BRIGHTNESS']
+
             try:
                 task_type, data = animation_queue.get(timeout=0.1)
                 
@@ -370,7 +376,7 @@ def display_and_animation_loop():
     except KeyboardInterrupt:
         daemon_shutdown_event.set()
     finally:
-        app_log.info("\nExiting display and animation loop.")
+        print("\nExiting display and animation loop.")
         matrix.Clear()
 
 # -------------------------------------------------------------------------
